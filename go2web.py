@@ -9,6 +9,15 @@ def main():
 
     args = parser.parse_args()
 
+    if args.url:
+        pass
+    elif args.search:
+        pass
+    elif args.link:
+        pass
+    else:
+        parser.print_help()
+
 
 
 if __name__ == '__main__':
