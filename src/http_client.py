@@ -5,6 +5,7 @@ class HttpClient:
 
         parsed_url = self._parse_url(url)
         request_headers = self._prepare_headers(parsed_url, headers, accept)
+        request_data = self._build_request(method, parsed_url, request_headers, data)
 
 
     def _parse_url(self, url):
@@ -13,6 +14,7 @@ class HttpClient:
         if not parsed_url.path:
             parsed_url = parsed_url._replace(path='/')
         return parsed_url
+
 
     def _prepare_headers(self, parsed_url, headers, accept):
         """Prepare headers for http request."""
@@ -24,3 +26,24 @@ class HttpClient:
             headers['Accept'] = accept
         return headers
 
+
+    def _build_request(self, method, parsed_url, request_headers, data=None):
+        """Build http request."""
+        path = parsed_url.path
+        if parsed_url.query:
+            path = path + '?' + parsed_url.query
+
+        request = f"{method} {path} HTTP/1.1\r\n"
+
+        for key, value in request_headers.items():
+            request += key + f"\r\n{value}\r\n"
+
+        if data:
+            request += f"Content-Length: {len(data)}\r\n"
+
+        request += f"\r\n"
+
+        if data:
+            request += data
+
+        return request
