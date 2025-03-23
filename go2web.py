@@ -6,11 +6,19 @@ def main():
     parser.add_argument('-u', '--url', help='Fetch the given URL')
     parser.add_argument('-s', '--search', help='Search term to look for')
     parser.add_argument('-link', type=int, help='Link number from search result')
+    parser.add_argument("--json", action="store_true", help="Request JSON content")
+    parser.add_argument("--html", action="store_true", help="Request HTML content")
 
     args = parser.parse_args()
 
     if args.url:
-        pass
+        # Request format
+        accept = None
+        if args.json:
+            accept = "application/json"
+        elif args.html:
+            accept = "text/html"
+
     elif args.search:
         pass
     elif args.link:
