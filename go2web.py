@@ -1,5 +1,6 @@
 import argparse
 
+from src.http_client import HttpClient
 
 def main():
     parser = argparse.ArgumentParser(description='A simple web scraping tool')
@@ -11,6 +12,8 @@ def main():
 
     args = parser.parse_args()
 
+    client = HttpClient()
+
     if args.url:
         # Request format
         accept = None
@@ -18,6 +21,8 @@ def main():
             accept = "application/json"
         elif args.html:
             accept = "text/html"
+
+        response = client.make_http_request(args.url, accept=accept)
 
     elif args.search:
         pass
