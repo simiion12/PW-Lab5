@@ -1,7 +1,8 @@
 from urllib.parse import urlparse
 import socket
-
-from dns.query import ssl
+import ssl
+import gzip
+import zlib
 
 
 class HttpClient:
@@ -19,6 +20,10 @@ class HttpClient:
                     parsed_url, response_headers, method, headers, data,
                     follow_redirects, accept, max_redirects
                 )
+
+            decoded_body = self._process_response(response, response_headers)
+
+            return decoded_body, response_headers
 
 
         except Exception as e:
@@ -121,7 +126,8 @@ class HttpClient:
                 max_redirects > 0)
 
 
-    def _handle_redirect(self, parsed_url, response_headers, method, headers, data, follow_redirects, accept, max_redirects):
+    def _handle_redirect(self, parsed_url, headers, method, original_headers, data, follow_redirects, accept,
+                         max_redirects):
         """Handle redirect."""
         redirect_url = headers["Location"]
         hostname = parsed_url.netloc
@@ -133,7 +139,45 @@ class HttpClient:
             else:
                 redirect_url = f"{parsed_url.scheme}://{hostname}/{redirect_url}"
 
-        print(f"Redirect to: {redirect_url}")
-        return self.make_http_request(redirect_url, method, response_headers, data, follow_redirects, accept, max_redirects - 1)
+        print(f"Redirecting to: {redirect_url}")
+        return self.make_http_request(
+            redirect_url, method, original_headers, data,
+            follow_redirects, accept, max_redirects - 1
+        )
 
 
+    def _process_response(self, body, headers):
+        """Process and decode the response body"""
+
+        # Determine charset from Content-Type
+        content_type = headers.get("Content-Type", "")
+        charset = "utf-8"
+        if "charset=" in content_type:
+            charset = content_type.split("charset=")[1].split(";")[0].strip()
+        if "Content-Encoding" in headers:
+            body = self._decompress_body(body, headers["Content-Encoding"].lower())
+
+        try:
+            decoded_body = body.decode(charset, errors="replace")
+        except (UnicodeDecodeError, LookupError):
+            decoded_body = body.decode("utf-8", errors="replace")
+
+        return decoded_body
+
+
+    def _decompress_body(self, body, encoding):
+        """Decompress the response body if it's compressed"""
+        if encoding == "gzip":
+            try:
+                return gzip.decompress(body)
+            except OSError:
+                print("Error: Not a gzipped file")
+                return body
+        elif encoding == "deflate":
+            try:
+                return zlib.decompress(body)
+            except zlib.error:
+                print("Error: Not a deflated file")
+                return body
+
+        return body
