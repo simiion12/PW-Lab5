@@ -6,7 +6,7 @@ import zlib
 
 
 class HttpClient:
-    def make_http_request(self, url, method='GET', accept=None, data=None, headers=None, follow_redirects=True, max_redirects=5):
+    def make_http_request(self, url, method="GET", headers=None, data=None, follow_redirects=True, accept=None, max_redirects=5):
 
         parsed_url = self._parse_url(url)
         request_headers = self._prepare_headers(parsed_url, headers, accept)
@@ -25,7 +25,6 @@ class HttpClient:
 
             return decoded_body, response_headers
 
-
         except Exception as e:
             return f"Error occurred: {str(e)}", {}
 
@@ -34,36 +33,39 @@ class HttpClient:
         """Parse url into its components."""
         parsed_url = urlparse(url)
         if not parsed_url.path:
-            parsed_url = parsed_url._replace(path='/')
+            parsed_url = parsed_url._replace(path="/")
         return parsed_url
 
 
-    def _prepare_headers(self, parsed_url, headers, accept):
-        """Prepare headers for http request."""
+    def _prepare_headers(self, parsed_url, headers=None, accept=None):
+        """Prepare the HTTP headers for the request"""
+        if headers is None:
+            headers = {}
+
         hostname = parsed_url.netloc
-        headers['Host'] = hostname.split(':')[0]
-        headers['User-Agent'] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-        headers['Connection'] = "close"
+        headers["Host"] = hostname.split(":")[0]
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+        headers["Connection"] = "close"
         if accept:
-            headers['Accept'] = accept
+            headers["Accept"] = accept
         return headers
 
 
-    def _build_request(self, method, parsed_url, request_headers, data=None):
+    def _build_request(self, method, parsed_url, headers, data=None):
         """Build http request."""
         path = parsed_url.path
         if parsed_url.query:
-            path = path + '?' + parsed_url.query
+            path += "?" + parsed_url.query
 
         request = f"{method} {path} HTTP/1.1\r\n"
 
-        for key, value in request_headers.items():
-            request += key + f"\r\n{value}\r\n"
+        for key, value in headers.items():
+            request += f"{key}: {value}\r\n"
 
         if data:
             request += f"Content-Length: {len(data)}\r\n"
 
-        request += f"\r\n"
+        request += "\r\n"
 
         if data:
             request += data
@@ -73,21 +75,21 @@ class HttpClient:
 
     def _create_socket(self, parsed_url):
         """Create a socket connection."""
-        hostname = parsed_url.netloc.split(':')[0]
-        port = parsed_url.port if parsed_url.port else 80 if parsed_url.scheme == 'http' else 443
+        hostname = parsed_url.netloc.split(":")[0]
+        port = parsed_url.port if parsed_url.port else 80 if parsed_url.scheme == "http" else 443
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        if parsed_url.scheme == 'https':
-            context  = ssl.create_default_context()
-            sock = context.wrap_socket(sock, server_hostname=hostname)
+        if parsed_url.scheme == "https":
+            context = ssl.create_default_context()
+            s = context.wrap_socket(s, server_hostname=hostname)
 
-        sock.connect((hostname, port))
-        return sock
+        s.connect((hostname, port))
+        return s
 
 
     def _send_request(self, parsed_url, request_data):
-        """Send http request."""
+        """Send the HTTP request and receive the response"""
         s = self._create_socket(parsed_url)
         s.sendall(request_data.encode())
 
@@ -101,9 +103,9 @@ class HttpClient:
         s.close()
 
         # Parse response into headers and body
-        headers_end = response.find(b'\r\n\r\n')
-        headers_raw = response[:headers_end].encode("utf-8", errors="ignore")
-        body = response[headers_end+4:]
+        header_end = response.find(b"\r\n\r\n")
+        headers_raw = response[:header_end].decode("utf-8", errors="ignore")
+        body = response[header_end + 4:]
 
         # Extract status code and headers
         status_line = headers_raw.split("\r\n")[0]
@@ -118,11 +120,11 @@ class HttpClient:
         return body, response_headers, status_code
 
 
-    def _should_redirect(self, follow_redirects, status_code, response_headers, max_redirects):
-        """Check if we should redirect."""
+    def _should_redirect(self, follow_redirects, status_code, headers, max_redirects):
+        """Determine if a redirect should be followed"""
         return (follow_redirects and
                 status_code in (301, 302, 303, 307, 308) and
-                "Location" in response_headers and
+                "Location" in headers and
                 max_redirects > 0)
 
 
