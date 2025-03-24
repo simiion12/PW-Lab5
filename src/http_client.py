@@ -12,7 +12,14 @@ class HttpClient:
         request_data = self._build_request(method, parsed_url, request_headers, data)
 
         try:
-            response, request_headers, status_code = self._send_request(parsed_url, request_data)
+            response, response_headers, status_code = self._send_request(parsed_url, request_data)
+
+            if self._should_redirect(follow_redirects, status_code, response_headers, max_redirects):
+                return self._handle_redirect(
+                    parsed_url, response_headers, method, headers, data,
+                    follow_redirects, accept, max_redirects
+                )
+
 
         except Exception as e:
             return f"Error occurred: {str(e)}", {}
@@ -104,4 +111,29 @@ class HttpClient:
                 response_headers[key.strip()] = value.strip()
 
         return body, response_headers, status_code
+
+
+    def _should_redirect(self, follow_redirects, status_code, response_headers, max_redirects):
+        """Check if we should redirect."""
+        return (follow_redirects and
+                status_code in (301, 302, 303, 307, 308) and
+                "Location" in response_headers and
+                max_redirects > 0)
+
+
+    def _handle_redirect(self, parsed_url, response_headers, method, headers, data, follow_redirects, accept, max_redirects):
+        """Handle redirect."""
+        redirect_url = headers["Location"]
+        hostname = parsed_url.netloc
+
+        # Handle relative URLs
+        if not redirect_url.startswith(("http://", "https://")):
+            if redirect_url.startswith("/"):
+                redirect_url = f"{parsed_url.scheme}://{hostname}{redirect_url}"
+            else:
+                redirect_url = f"{parsed_url.scheme}://{hostname}/{redirect_url}"
+
+        print(f"Redirect to: {redirect_url}")
+        return self.make_http_request(redirect_url, method, response_headers, data, follow_redirects, accept, max_redirects - 1)
+
 
