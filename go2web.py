@@ -2,6 +2,7 @@ import argparse
 
 from src.http_client import HttpClient
 from src.formatters import Formatter
+from src.search import Search
 
 def main():
     parser = argparse.ArgumentParser(description='A simple web scraping tool')
@@ -15,6 +16,7 @@ def main():
 
     client = HttpClient()
     formatter = Formatter()
+    searcher = Search(client)
 
     if args.url:
         # Request format
@@ -33,7 +35,14 @@ def main():
             formatter.format_html_content(response)
 
     elif args.search:
-        pass
+        results = searcher.search(args.search)
+        print(f"\n=== Search Results for '{args.search}' ===\n")
+
+        if results:
+            for i, (title, url) in enumerate(results):
+                print(f"{i + 1}. {title}\n  {url}\n")
+        else:
+            print(f"No results for '{args.search}'")
     elif args.link:
         pass
     else:

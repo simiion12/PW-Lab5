@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
-from http_client import HttpClient
+from src.http_client import HttpClient
 
 
 class Search:
