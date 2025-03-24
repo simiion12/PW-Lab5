@@ -13,8 +13,12 @@ class Cache:
         # Create a filename based on the URL
         filename = url.replace("://", "_").replace("/", "_").replace("?", "_").replace("&", "_")
         if content_type:
-            filename += f"_{content_type}"
-        return os.path.join(self.cache_dir, filename)
+            safe_content_type = content_type.replace("/", "_")
+            filename += f"_{safe_content_type}"
+        
+        full_path = os.path.join(self.cache_dir, filename)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        return full_path
 
     def get(self, url, content_type=None, max_age=3600):  # Default cache age: 1 hour
         cache_path = self.get_cache_path(url, content_type)

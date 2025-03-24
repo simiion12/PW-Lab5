@@ -49,11 +49,3 @@ class Formatter:
             return json.dumps(json_data, indent=2)
         except:
             return content
-
-
-# For backward compatibility
-def format_html_content(content):
-    return Formatter.format_html_content(content)
-
-def format_json_content(content):
-    return Formatter.format_json_content(content) 
